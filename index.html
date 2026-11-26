@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SuperConductor</title>
+  <meta name="description" content="Demo videos and figures for SuperConductor, a human-AI music co-creation system.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..600&family=Schibsted+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/img/favicon-32.png">
+  <link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
+  <link rel="stylesheet" href="style.css?v=34">
+</head>
+<body>
+<nav class="nav" aria-label="Demos">
+  <ol>
+    <li><a href="#collaborative">Collaborative mode</a></li>
+    <li><a href="#conductor">Conductor mode</a></li>
+    <li><a href="#baton">Sensor Equipped Baton</a></li>
+    <li><a href="#architecture">System Architecture</a></li>
+  </ol>
+</nav>
+
+<main class="page" id="top">
+  <section class="wide hero-section" id="hero">
+    <h2 class="hero-title">SuperConductor</h2>
+    <p class="hero-subtitle">Exploring Playful, Interactive, and Collaborative Human&#8209;AI Music Co&#8209;creativity</p>
+    <p class="caption">Anonymous Authors, Anonymous Institute</p>
+    <p class="hero-links"><a class="paper-pill" href="assets/SuperConductor.pdf" target="_blank" rel="noopener">Paper (CLIP workshop submission)</a></p>
+    <p>Recent years have seen rapid progress in text-to-music generation. Yet typing a prompt and
+      waiting for a finished clip is far from how music is usually made. Advances in live music models
+      have opened a promising research direction toward making AI music generation more interactive and
+      embodied. However, these models still lack an interface that lets people engage with them as
+      performers: through their bodies, in real time, and together.</p>
+    <div class="wide figure-pair">
+      <figure>
+        <img src="assets/figures/fig1-conductor-mode.webp" width="1376" height="768" loading="lazy"
+          alt="Illustration of a person conducting an ensemble of robot musicians">
+        <figcaption><strong><a href="#conductor">Conductor mode.</a></strong> In the conductor mode, a user
+          shapes the music through gestures and body motion as if they were conducting an AI music
+          ensemble.</figcaption>
+      </figure>
+      <figure>
+        <img src="assets/figures/fig1-collaborative-mode.webp" width="1376" height="768" loading="lazy"
+          alt="Illustration of people in a shared space moving instrument-shaped objects on a table">
+        <figcaption><strong><a href="#collaborative">Collaborative mode.</a></strong> In the collaborative mode,
+          people sharing a public space, such as a lobby or airport, jointly shape the music they hear.
+          Together, they create and share a unique musical experience transforming a soundscape normally
+          determined by others into a playful, collective creative experience.
+          Illustrations were made with generative AI tools.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="wide paper-section" id="about">
+    <p>We present SuperConductor, a playful, interactive, and collaborative human-AI music co-creating
+      system. Built on a real-time music generation model, SuperConductor translates webcam-tracked
+      hand gestures, the motion of the Sensor Equipped Baton, and the movement of detected tangible
+      objects into control over tempo, genre, and other musical attributes.</p>
+    <p>In a conductor mode, a user shapes the music through gestures and body motion as if they were
+      conducting an AI music ensemble. In a collaborative mode, people sharing a public space, such
+      as a lobby or airport, jointly shape the music they hear, turning a soundscape normally dictated
+      by others into a playful, collective creative experience.</p>
+    <p>To make a live music model conductable, SuperConductor bounds control latency with a
+      credit-based client-server architecture, time-stretches the generated audio toward the
+      conducted tempo, and lets multiple inputs and users steer the model simultaneously. As ongoing
+      work, we report preliminary evaluations of its beat controllers and outline plans for public
+      installations and a user study.</p>
+  </section>
+
+  <section class="wide" id="collaborative">
+    <h2 class="mode-title">Collaborative mode</h2>
+    <p>Each plush on the table maps to a musical prompt (here, brushed jazz drums, violin,
+      accordion, and ambient synthesizer), and moving a plush closer to the center raises its weight in
+      the mix. In this clip, the music shifts with the positions of the plushes, and placing two
+      plushes together forms a shared <em>string orchestra</em> combo.</p>
+    <div class="wide table-session" id="table-demo">
+      <figure class="tracking-video">
+        <video controls playsinline preload="metadata" width="1280" height="720"
+          src="assets/video/table-tracking.mp4" poster="assets/video/table-tracking.jpg"
+          aria-label="Table 2 recording with colored tracking dots and the parameter overlay"></video>
+        <figcaption><strong><a href="#collaborative">Collaborative mode.</a></strong> Table 2 session with tracking dots and the original generated audio.</figcaption>
+      </figure>
+      <aside class="table-readouts" aria-label="Recipe at the current video time">
+        <h3>MusicCoCa embedding weights</h3>
+        <dl class="mix"></dl>
+        <h3><code>UpdateRecipe</code></h3>
+        <pre class="recipe" aria-label="UpdateRecipe JSON">{
+  "type": "UpdateRecipe",
+  "body": {"recipe": {
+    "brushed jazz drums": 0.6,
+    "violin": 0.05,
+    "accordion": 0.2,
+    "ambient synthesizer": 0.15
+  }}
+}</pre>
+      </aside>
+    </div>
+  </section>
+
+  <section class="wide" id="conductor">
+    <h2 class="mode-title">Conductor mode</h2>
+    <p>Conductor mode gives one person direct, individual control over the music’s timing, as if
+      leading an ensemble. With the style chosen beforehand, conducting a 4/4 pattern in front of a
+      webcam speeds up or slows down the generated music to match your tempo, and holding up a closed
+      fist hands control back to the model. Music style parameters are determined outside of the
+      conducting mode, from sources such as the collaborative plushes on a table, or via the
+      development interface.</p>
+    <p>To estimate tempo, the hand’s position over the last 5 seconds is compared with
+      time-shifted copies of itself. A 4/4 pattern repeats every bar, so the copy lines up best
+      when the shift is exactly one bar. If a bar lasts <var>T</var> seconds, its four beats give
+      4/<var>T</var> beats per second, or 4&nbsp;×&nbsp;60/<var>T</var>&nbsp;BPM.</p>
+    <div class="wide tempo-session" id="tempo-demo">
+      <figure class="tracking-video">
+        <video controls playsinline preload="metadata" width="1280" height="720"
+          src="assets/video/conducting-final.mp4?v=3" poster="assets/video/conducting-final.jpg?v=3"
+          aria-label="Recorded SuperConductor conducting demo with jazz accompaniment"></video>
+        <figcaption><strong><a href="#conductor">Conductor mode.</a></strong> Webcam recording with jazz accompaniment.</figcaption>
+      </figure>
+      <figure class="motion-3d">
+        <div class="motion-head">
+          <h3>Position and similarity</h3>
+          <label class="rotate">Rotate <input type="range" min="-60" max="-12" value="-28"></label>
+        </div>
+        <svg viewBox="0 0 400 396" role="img"
+          aria-label="Conducting position over the last 5 s in 3D, with the similarity at each shift on the ground in front."></svg>
+        <p class="legend">
+          <span class="key blue">Conducting position</span>
+          <span class="key orange">Shifted copy</span>
+        </p>
+      </figure>
+      <figure class="tempo-match">
+        <div class="match-head">
+          <h3>Tempo</h3>
+          <p class="legend">
+            <span class="key ink">Estimate</span>
+            <span class="key ink dashed">Filled-in estimate</span>
+            <span class="key yellow">Playback BPM</span>
+          </p>
+        </div>
+        <svg viewBox="0 0 760 205" role="img"
+          aria-label="The estimated tempo, filled-in estimates, and the playback BPM shown in the video over the last 5 s."></svg>
+        <div class="tempo-result" aria-live="off">
+          <p class="tempo-bpm"><output>–</output> <span>BPM</span></p>
+        </div>
+        <figcaption>Similarity is the normalized autocorrelation between the motion and a copy
+          shifted back in time. The estimate takes the shortest shift whose peak is above the
+          threshold and within 0.1 of the highest peak.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="wide paper-section" id="baton">
+    <h2 class="mode-title">Sensor Equipped Baton</h2>
+    <p>The 39.78 cm body is 3D-printed as two half-shells. It holds an ESP32 board in the grip
+      and two MPU-6050 inertial measurement units (IMUs) along the shaft, 15 cm apart, each reporting
+      three-axis acceleration and angular rate. The microcontroller runs no model. About 50 times a
+      second it sends the twelve raw values over Bluetooth Low Energy to a bridge process on a laptop,
+      which recognises gestures and forwards the stream to a browser page.</p>
+    <figure class="wide baton-figure">
+      <img src="assets/figures/fig2-baton-design.webp" width="1510" height="1056" loading="lazy"
+        alt="Design of the baton: the outside and a section view with the two inertial sensors and the ESP32 board inside the 3D-printed body">
+      <img src="assets/figures/fig2-baton-assembled.webp" width="594" height="1737" loading="lazy"
+        alt="The printed baton, assembled">
+      <img src="assets/figures/fig2-baton-opened.webp" width="770" height="1737" loading="lazy"
+        alt="The printed baton, opened">
+      <figcaption>Design of the baton: the outside (left) and a section view (right) with the two inertial
+        sensors (MPU-6050) and the ESP32 board inside the 3D-printed body. The printed baton, assembled
+        (center) and opened (right). The battery pack that powers it is not shown.</figcaption>
+    </figure>
+    <p>We recorded 842 clips of the seven gestures from four performers, all members of the project team
+      (421, 141, 140 and 140 clips; about 120 per gesture). Five-fold cross-validation splits all clips
+      at random, so a performer appears in both the training and the test data. Leave-one-performer-out
+      (LOPO) tests on a performer the model has not seen. With performers mixed, every model exceeds 96%.
+      With the test performer held out, every model loses between 27 and 36 points.</p>
+    <figure class="wide eval-figures">
+      <img src="assets/figures/fig10-confusion-5fold.webp" width="600" height="600" loading="lazy"
+        alt="Confusion matrix for 5-fold cross-validation of baton gesture recognition">
+      <img src="assets/figures/fig10-confusion-lopo.webp" width="600" height="600" loading="lazy"
+        alt="Confusion matrix for leave-one-performer-out evaluation">
+      <figcaption>Confusion matrices of the convolutional neural network under five-fold
+        cross-validation (left) and with the test performer held out (right).</figcaption>
+    </figure>
+  </section>
+
+  <section class="wide paper-section" id="architecture">
+    <h2 class="mode-title">System Architecture</h2>
+    <p>The backend is one server process that runs MRT2. Clients send control messages to
+      <code>/stream/input</code>, and the player receives audio from <code>/stream/playback</code>. Any
+      number of clients can connect to the input channel. The server keeps the MRT2 state in memory and
+      generates one block at a time.</p>
+    <p>The player paces generation with credits. When the player connects, the server generates
+      <var>N</var> blocks. After that, it generates one block for each <code>ReceivedChunk</code> message
+      the player sends when a block has played. From control message to first sample at the sound card,
+      the measured delay is 556 ms on average (451–659 ms): 101 ms on average waiting for the next block,
+      400 ms behind the <var>N</var>&nbsp;&minus;&nbsp;1 queued blocks, and 48 ms of output latency.
+      Generating a block takes about 96 ms, which leaves 360 ms of slack. This slack absorbs the 300 ms
+      stall when a new prompt must be embedded.</p>
+    <figure class="wide paper-figure">
+      <img src="assets/figures/fig5-system-backend.webp" width="1430" height="523" loading="lazy"
+        alt="System backend architecture diagram showing Input (Client), Processing (Server with MRT2 and tempo time-stretch), and Output (Player and visualization)">
+      <figcaption>System backend. Style and notes/drums updates reach the server on <code>/stream/input</code>,
+        and tempo updates over HTTP. Each MRT2 block is time-stretched and streamed to the player on
+        <code>/stream/playback</code>, and one <code>ReceivedChunk</code> is returned per block played.</figcaption>
+    </figure>
+    <figure class="wide paper-figure">
+      <img src="assets/figures/fig6-credit-window.webp" width="1479" height="508" loading="lazy"
+        alt="Timing diagram of one control change through the credit window of N = 3 blocks of 200 ms, totaling up to 600 ms">
+      <figcaption>Timing of one control change (<var>N</var>&nbsp;=&nbsp;3, <var>F</var>&nbsp;=&nbsp;5),
+        measured with mrt2_small.</figcaption>
+    </figure>
+    <h3>Tempo and style</h3>
+    <p>To make the generated music follow the conductor’s tempo, we time-stretch the generated waveform.
+      For each audio block, we compute a target playback speed as the conducted tempo divided by the
+      estimated tempo, and move the current speed gradually toward this target to avoid abrupt tempo
+      changes. The block is then time-stretched to this speed using a WSOLA implementation, to maintain
+      pitch correctness and minimize perceptual discontinuities in the audio.</p>
+    <p>The browser detects and tracks the plushes with YOLOE and BoT-SORT on WebGPU. The client
+      identifies each plush by comparing a DINOv2 embedding of its crop with up to 12 stored reference
+      frames of each known plush, so a plush that is occluded or leaves the view is re-identified when
+      it reappears. A plush’s weight increases as it approaches a reference point on the table, and four
+      times a second the client sends all weights in one <code>UpdateRecipe</code> message.</p>
+  </section>
+
+  <footer class="wide">
+    <p class="caption"><cite>SuperConductor: Exploring Playful, Interactive, and Collaborative Human-AI Music Co-creativity</cite>. Anonymous Authors, Anonymous Institute</p>
+  </footer>
+</main>
+
+<!-- Collaborative mode: [videoTime, recipe] pairs and the prompt colors. -->
+<script id="table-session-data" type="application/json">
+{
+  "prompts":[["brushed jazz drums","#5fa37c"],["violin","#d9832b"],["string orchestra","#7a5ba6"],["accordion","#dcb21f"],["ambient synthesizer","#6f97c9"]],
+  "combo":{"prompt":"string orchestra","members":["brushed jazz drums","violin"]},
+  "recipes":[
+    [0.0,{"brushed jazz drums":0.6,"violin":0.05,"accordion":0.2,"ambient synthesizer":0.15}],
+    [3.1,{"brushed jazz drums":0.55,"violin":0.05,"accordion":0.2,"ambient synthesizer":0.15}],
+    [3.3,{"brushed jazz drums":0.5,"violin":0.05,"accordion":0.2,"ambient synthesizer":0.15}],
+    [3.5,{"brushed jazz drums":0.45,"violin":0.05,"accordion":0.2,"ambient synthesizer":0.15}],
+    [3.6,{"brushed jazz drums":0.4,"violin":0.05,"accordion":0.2,"ambient synthesizer":0.15}],
+    [3.7,{"brushed jazz drums":0.3,"violin":0.05,"accordion":0.2,"ambient synthesizer":0.15}],
+    [3.8,{"brushed jazz drums":0.25,"violin":0.05,"accordion":0.2,"ambient synthesizer":0.15}],
+    [3.9,{"brushed jazz drums":0.2,"violin":0.05,"accordion":0.2,"ambient synthesizer":0.15}],
+    [4.1,{"brushed jazz drums":0.15,"violin":0.05,"accordion":0.2,"ambient synthesizer":0.15}],
+    [5.4,{"brushed jazz drums":0.1,"violin":0.05,"accordion":0.15,"ambient synthesizer":0.15}],
+    [5.6,{"brushed jazz drums":0.1,"violin":0.1,"accordion":0.15,"ambient synthesizer":0.15}],
+    [5.7,{"brushed jazz drums":0.1,"violin":0.2,"accordion":0.15,"ambient synthesizer":0.15}],
+    [5.8,{"brushed jazz drums":0.1,"violin":0.25,"accordion":0.15,"ambient synthesizer":0.15}],
+    [5.9,{"brushed jazz drums":0.1,"violin":0.4,"accordion":0.15,"ambient synthesizer":0.15}],
+    [6.0,{"brushed jazz drums":0.1,"violin":0.5,"accordion":0.15,"ambient synthesizer":0.15}],
+    [6.1,{"brushed jazz drums":0.1,"violin":0.55,"accordion":0.2,"ambient synthesizer":0.15}],
+    [6.2,{"brushed jazz drums":0.1,"violin":0.6,"accordion":0.2,"ambient synthesizer":0.15}],
+    [9.8,{"brushed jazz drums":0.15,"violin":0.65,"accordion":0.2,"ambient synthesizer":0.15}],
+    [10.0,{"brushed jazz drums":0.25,"violin":0.65,"accordion":0.2,"ambient synthesizer":0.15}],
+    [10.2,{"brushed jazz drums":0.15,"violin":0.35,"accordion":0.2,"ambient synthesizer":0.15}],
+    [10.3,{"brushed jazz drums":0.05,"violin":0.15,"accordion":0.2,"ambient synthesizer":0.15}],
+    [10.4,{"accordion":0.2,"ambient synthesizer":0.15,"string orchestra":0.1}],
+    [10.5,{"accordion":0.2,"ambient synthesizer":0.15,"string orchestra":0.3}],
+    [10.6,{"accordion":0.2,"ambient synthesizer":0.15,"string orchestra":0.6}],
+    [14.3,{"accordion":0.2,"ambient synthesizer":0.15,"string orchestra":0.65}],
+    [14.9,{"accordion":0.2,"ambient synthesizer":0.15,"string orchestra":0.55}],
+    [15.1,{"accordion":0.2,"ambient synthesizer":0.15,"string orchestra":0.45}],
+    [15.3,{"accordion":0.2,"ambient synthesizer":0.15,"string orchestra":0.35}],
+    [15.5,{"accordion":0.2,"ambient synthesizer":0.15,"string orchestra":0.3}],
+    [15.7,{"accordion":0.2,"ambient synthesizer":0.2,"string orchestra":0.25}],
+    [15.8,{"accordion":0.2,"ambient synthesizer":0.25,"string orchestra":0.2}],
+    [15.9,{"accordion":0.2,"ambient synthesizer":0.35,"string orchestra":0.2}],
+    [16.0,{"accordion":0.2,"ambient synthesizer":0.45,"string orchestra":0.2}],
+    [16.1,{"accordion":0.2,"ambient synthesizer":0.55,"string orchestra":0.2}],
+    [16.2,{"accordion":0.2,"ambient synthesizer":0.65,"string orchestra":0.15}],
+    [16.3,{"accordion":0.2,"ambient synthesizer":0.7,"string orchestra":0.15}],
+    [16.5,{"accordion":0.2,"ambient synthesizer":0.8,"string orchestra":0.15}],
+    [18.7,{"accordion":0.2,"ambient synthesizer":0.85,"string orchestra":0.05}],
+    [18.9,{"brushed jazz drums":0.05,"violin":0.05,"accordion":0.2,"ambient synthesizer":0.85}],
+    [19.1,{"brushed jazz drums":0.15,"violin":0.15,"accordion":0.2,"ambient synthesizer":0.85}],
+    [19.4,{"brushed jazz drums":0.25,"violin":0.1,"accordion":0.2,"ambient synthesizer":0.85}],
+    [19.7,{"brushed jazz drums":0.3,"violin":0.1,"accordion":0.2,"ambient synthesizer":0.85}],
+    [20.0,{"brushed jazz drums":0.35,"violin":0.1,"accordion":0.2,"ambient synthesizer":0.85}],
+    [20.4,{"brushed jazz drums":0.45,"violin":0.1,"accordion":0.2,"ambient synthesizer":0.85}],
+    [20.6,{"brushed jazz drums":0.5,"violin":0.2,"accordion":0.2,"ambient synthesizer":0.85}],
+    [20.9,{"brushed jazz drums":0.5,"violin":0.15,"accordion":0.2,"ambient synthesizer":0.8}],
+    [21.1,{"brushed jazz drums":0.55,"violin":0.1,"accordion":0.2,"ambient synthesizer":0.8}],
+    [23.4,{"brushed jazz drums":0.5,"violin":0.05,"accordion":0.2,"ambient synthesizer":0.7}],
+    [23.5,{"brushed jazz drums":0.5,"violin":0.05,"accordion":0.2,"ambient synthesizer":0.6}],
+    [23.6,{"brushed jazz drums":0.5,"violin":0.05,"accordion":0.2,"ambient synthesizer":0.45}],
+    [23.7,{"brushed jazz drums":0.5,"violin":0.05,"accordion":0.2,"ambient synthesizer":0.3}],
+    [23.8,{"brushed jazz drums":0.5,"violin":0.05,"accordion":0.2,"ambient synthesizer":0.2}],
+    [23.9,{"brushed jazz drums":0.5,"violin":0.05,"accordion":0.2,"ambient synthesizer":0.15}],
+    [24.1,{"brushed jazz drums":0.5,"violin":0.05,"accordion":0.2,"ambient synthesizer":0.05}],
+    [25.1,{"brushed jazz drums":0.6,"violin":0.05,"accordion":0.2,"ambient synthesizer":0.05}],
+    [25.2,{"brushed jazz drums":0.65,"violin":0.05,"accordion":0.25,"ambient synthesizer":0.05}],
+    [25.4,{"brushed jazz drums":0.7,"violin":0.05,"accordion":0.3,"ambient synthesizer":0.05}],
+    [25.5,{"brushed jazz drums":0.6,"violin":0.05,"accordion":0.3,"ambient synthesizer":0.05}],
+    [25.6,{"brushed jazz drums":0.5,"violin":0.05,"accordion":0.35,"ambient synthesizer":0.05}],
+    [25.7,{"brushed jazz drums":0.4,"violin":0.05,"accordion":0.4,"ambient synthesizer":0.05}],
+    [25.8,{"brushed jazz drums":0.3,"violin":0.05,"accordion":0.45,"ambient synthesizer":0.05}],
+    [25.9,{"brushed jazz drums":0.25,"violin":0.1,"accordion":0.5,"ambient synthesizer":0.05}],
+    [26.1,{"brushed jazz drums":0.2,"violin":0.1,"accordion":0.6,"ambient synthesizer":0.05}],
+    [26.4,{"brushed jazz drums":0.15,"violin":0.1,"accordion":0.65,"ambient synthesizer":0.05}],
+    [30.7,{"brushed jazz drums":0.15,"violin":0.05,"accordion":0.65,"ambient synthesizer":0.1}],
+    [30.8,{"brushed jazz drums":0.15,"violin":0.05,"accordion":0.65,"ambient synthesizer":0.15}],
+    [30.9,{"brushed jazz drums":0.15,"violin":0.05,"accordion":0.65,"ambient synthesizer":0.25}],
+    [31.0,{"brushed jazz drums":0.15,"violin":0.05,"accordion":0.65,"ambient synthesizer":0.3}],
+    [31.1,{"brushed jazz drums":0.15,"violin":0.05,"accordion":0.65,"ambient synthesizer":0.35}],
+    [31.2,{"brushed jazz drums":0.15,"violin":0.05,"accordion":0.65,"ambient synthesizer":0.45}],
+    [31.3,{"brushed jazz drums":0.15,"violin":0.05,"accordion":0.65,"ambient synthesizer":0.5}],
+    [31.4,{"brushed jazz drums":0.15,"violin":0.05,"accordion":0.65,"ambient synthesizer":0.6}],
+    [31.6,{"brushed jazz drums":0.15,"violin":0.05,"accordion":0.65,"ambient synthesizer":0.65}],
+    [31.9,{"brushed jazz drums":0.15,"violin":0.05,"accordion":0.65,"ambient synthesizer":0.75}]
+  ]
+}
+</script>
+<script defer src="js/table.js?v=5"></script>
+<script defer src="js/conducting-tempo-data.js?v=6"></script>
+<script defer src="js/conducting-tempo.js?v=34"></script>
+</body>
+</html>
