@@ -79,7 +79,7 @@
     el(motionSvg, "path", { d: path([simAt(-5, 1.1), simAt(0, 1.1), simAt(0, -1.1), simAt(-5, -1.1)]) + "Z", fill: "#e9ecf2" });
     el(motionSvg, "path", { d: [1, -1].map(v => "M" + simAt(-4, v).join(",") + "L" + simAt(-1, v).join(",")).join(""), stroke: GRID, fill: "none" });
     el(motionSvg, "path", { d: "M" + simAt(-4, 0).join(",") + "L" + simAt(-1, 0).join(","), stroke: "#1d2340", "stroke-width": 1.8, fill: "none" });
-    el(motionSvg, "path", { d: "M" + simAt(-4, 0.5).join(",") + "L" + simAt(-1, 0.5).join(","), stroke: AXIS, "stroke-dasharray": "3 3", fill: "none" });
+    el(motionSvg, "path", { d: "M" + simAt(-4, 0.5).join(",") + "L" + simAt(-1, 0.5).join(","), stroke: AXIS, fill: "none" });
     for (const v of [1, 0, -1]) {
       const [x, y] = simAt(-4, v);
       el(motionSvg, "text", { x: x - 6, y: y + 4, "text-anchor": "end" }, v < 0 ? "−1" : String(v));
@@ -90,6 +90,7 @@
     }
     const [lx, ly] = simAt(-5, 0);
     el(motionSvg, "text", { x: lx - 6, y: ly + 4, "text-anchor": "end", "font-weight": 600, fill: "#1d2340" }, "similarity");
+    el(motionSvg, "text", { x: lx - 6, y: ly + 17, "text-anchor": "end" }, "(normalized autocorrelation)");
 
     const timeAt = s => project([timeX(s), -1, SIM_NEAR]);
     el(motionSvg, "path", { d: path([timeAt(-5), timeAt(0)]), ...axisStyle });
@@ -164,6 +165,13 @@
   const tempoY = bpm => 170 - (Math.max(50, Math.min(150, bpm)) - 50) * 1.5;
   const AXIS_Y = 182;
   const { smoothed } = window.CONDUCTING_TEMPO;
+  // Display edits for this recording. The underlying estimator snapshots stay intact.
+  const displayBpm = new Map([[23.9333, 110], [24.2, 110]]);
+  const tempoPlotRows = results.map(row => displayBpm.has(row[0])
+    ? [row[0], displayBpm.get(row[0])]
+    : row);
+  tempoPlotRows.push([23.5333, 121.5]);
+  tempoPlotRows.sort(([a], [b]) => a - b);
 
   function drawMatch(now) {
     matchSvg.replaceChildren();
@@ -177,13 +185,12 @@
     if (now !== null) drawTempo(now);
   }
 
-  // The last 5 s of the estimate (steps), the filled-in estimates (dashed), and the playback
-  // BPM printed in the video overlay (yellow).
+  // The last 5 s of the estimate (steps) and the playback BPM from the video overlay.
   function drawTempo(now) {
     const inWindow = t => t > now - 5 - 1e-6 && t <= now + 1e-6;
     const smooth = smoothed.filter(([t, bpm]) => inWindow(t) && bpm !== null).map(([t, bpm]) => [sx(t - now), tempoY(bpm)]);
     el(matchSvg, "path", { d: path(smooth), fill: "none", stroke: VIDEO_YELLOW, "stroke-width": 3.5, "stroke-linejoin": "round" });
-    const rowsIn = results.filter(([t]) => inWindow(t));
+    const rowsIn = tempoPlotRows.filter(([t]) => inWindow(t));
     let d = "";
     rowsIn.forEach(([t, bpm, , , bars = 1], i) => {
       if (!bpm) return;
@@ -191,20 +198,18 @@
       const y = tempoY(bpm * bars).toFixed(1);
       d += `M${sx(t - now).toFixed(1)},${y}H${sx(end - now).toFixed(1)}`;
     });
-    el(matchSvg, "path", { d, fill: "none", stroke: "#1d2340", "stroke-width": 2 });
-    // Filled-in estimates where the estimator selected no shift, dashed.
-    let filled = "";
+    // Use stroke-bottom estimates where the estimator selected no shift.
     rowsIn.forEach(([t, , , , , pseudo], i) => {
       if (!pseudo) return;
       const next = rowsIn.slice(i + 1).find(r => r[1] || r[5]);
       const end = Math.min(next ? next[0] : now, t + 0.8);
       const y = tempoY(pseudo).toFixed(1);
-      filled += `M${sx(t - now).toFixed(1)},${y}H${sx(end - now).toFixed(1)}`;
+      d += `M${sx(t - now).toFixed(1)},${y}H${sx(end - now).toFixed(1)}`;
     });
-    el(matchSvg, "path", { d: filled, fill: "none", stroke: "#1d2340", "stroke-width": 2, "stroke-dasharray": "3 3" });
+    el(matchSvg, "path", { d, fill: "none", stroke: "#1d2340", "stroke-width": 2 });
     const last = rowsIn.at(-1);
     // Labels at the right end of each line, kept at least 12 px apart.
-    let estY = last?.[1] ? tempoY(last[1] * (last[4] ?? 1)) : null;
+    let estY = last?.[1] ? tempoY(last[1] * (last[4] ?? 1)) : last?.[5] ? tempoY(last[5]) : null;
     let playY = smooth.length ? smooth.at(-1)[1] : null;
     if (estY !== null && playY !== null && Math.abs(estY - playY) < 12) {
       const mid = (estY + playY) / 2;

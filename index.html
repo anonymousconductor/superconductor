@@ -18,8 +18,8 @@
   <ol>
     <li><a href="#collaborative">Collaborative mode</a></li>
     <li><a href="#conductor">Conductor mode</a></li>
-    <li><a href="#baton">Sensor Equipped Baton</a></li>
-    <li><a href="#architecture">System Architecture</a></li>
+    <li><a href="#baton">Physical Baton-based Gesture Recognition</a></li>
+    <li><a href="#architecture">System Backend</a></li>
   </ol>
 </nav>
 
@@ -109,8 +109,9 @@
       conducting mode, from sources such as the collaborative plushes on a table, or via the
       development interface.</p>
     <p>To estimate tempo, the hand’s position over the last 5 seconds is compared with
-      time-shifted copies of itself. A 4/4 pattern repeats every bar, so the copy lines up best
-      when the shift is exactly one bar. If a bar lasts <var>T</var> seconds, its four beats give
+      time-shifted copies of itself. Assuming a 4/4 conducting pattern, we select the time shift
+      using normalized autocorrelation, to estimate the length of one measure. If a measure lasts
+      <var>T</var> seconds, its four beats give
       4/<var>T</var> beats per second, or 4&nbsp;×&nbsp;60/<var>T</var>&nbsp;BPM.</p>
     <div class="wide tempo-session" id="tempo-demo">
       <figure class="tracking-video">
@@ -136,12 +137,11 @@
           <h3>Tempo</h3>
           <p class="legend">
             <span class="key ink">Estimate</span>
-            <span class="key ink dashed">Filled-in estimate</span>
             <span class="key yellow">Playback BPM</span>
           </p>
         </div>
         <svg viewBox="0 0 760 205" role="img"
-          aria-label="The estimated tempo, filled-in estimates, and the playback BPM shown in the video over the last 5 s."></svg>
+          aria-label="The estimated tempo and the playback BPM shown in the video over the last 5 s."></svg>
         <div class="tempo-result" aria-live="off">
           <p class="tempo-bpm"><output>–</output> <span>BPM</span></p>
         </div>
@@ -153,72 +153,73 @@
   </section>
 
   <section class="wide paper-section" id="baton">
-    <h2 class="mode-title">Sensor Equipped Baton</h2>
-    <p>The 39.78 cm body is 3D-printed as two half-shells. It holds an ESP32 board in the grip
+    <h2 class="mode-title">Physical Baton-based Gesture Recognition</h2>
+    <p><strong>Hardware.</strong> The 39.78 cm body is 3D-printed as two half-shells. It holds an ESP32 board in the grip
       and two MPU-6050 inertial measurement units (IMUs) along the shaft, 15 cm apart, each reporting
       three-axis acceleration and angular rate. The microcontroller runs no model. About 50 times a
       second it sends the twelve raw values over Bluetooth Low Energy to a bridge process on a laptop,
-      which recognises gestures and forwards the stream to a browser page.</p>
+      which recognises gestures and forwards the stream to a browser page (see Fig. 3).</p>
     <figure class="wide baton-figure">
       <img src="assets/figures/fig2-baton-design.webp" width="1510" height="1056" loading="lazy"
-        alt="Design of the baton: the outside and a section view with the two inertial sensors and the ESP32 board inside the 3D-printed body">
+        alt="Design of the baton: the outside (left) and a section view (right) with the two inertial sensors (MPU-6050) and the ESP32 board inside the 3D-printed body.">
       <img src="assets/figures/fig2-baton-assembled.webp" width="594" height="1737" loading="lazy"
         alt="The printed baton, assembled">
       <img src="assets/figures/fig2-baton-opened.webp" width="770" height="1737" loading="lazy"
         alt="The printed baton, opened">
-      <figcaption>Design of the baton: the outside (left) and a section view (right) with the two inertial
-        sensors (MPU-6050) and the ESP32 board inside the 3D-printed body. The printed baton, assembled
-        (center) and opened (right). The battery pack that powers it is not shown.</figcaption>
+      <figcaption>Fig. 2. Design of the baton: the outside (left) and a section view (right) with the two inertial
+        sensors (MPU-6050) and the ESP32 board inside the 3D-printed body. The battery pack that powers it is not shown.</figcaption>
     </figure>
     <p>We recorded 842 clips of the seven gestures from four performers, all members of the project team
       (421, 141, 140 and 140 clips; about 120 per gesture). Five-fold cross-validation splits all clips
       at random, so a performer appears in both the training and the test data. Leave-one-performer-out
-      (LOPO) tests on a performer the model has not seen. With performers mixed, every model exceeds 96%.
-      With the test performer held out, every model loses between 27 and 36 points.</p>
+      (LOPO) tests on a performer the model has not seen. As shown in Table 2, with performers mixed, every model exceeds 96%.
+      With the test performer held out, every model loses between 27 and 36 points, and for one performer
+      each the SVM and the random forest fall below 36%.</p>
     <figure class="wide eval-figures">
       <img src="assets/figures/fig10-confusion-5fold.webp" width="600" height="600" loading="lazy"
-        alt="Confusion matrix for 5-fold cross-validation of baton gesture recognition">
+        alt="Five-fold cross-validation (left)">
       <img src="assets/figures/fig10-confusion-lopo.webp" width="600" height="600" loading="lazy"
-        alt="Confusion matrix for leave-one-performer-out evaluation">
-      <figcaption>Confusion matrices of the convolutional neural network under five-fold
+        alt="With the test performer held out (right)">
+      <figcaption>Fig. 10. Confusion matrices of the convolutional neural network under five-fold
         cross-validation (left) and with the test performer held out (right).</figcaption>
     </figure>
   </section>
 
   <section class="wide paper-section" id="architecture">
-    <h2 class="mode-title">System Architecture</h2>
-    <p>The backend is one server process that runs MRT2. Clients send control messages to
+    <h2 class="mode-title">System Backend</h2>
+    <p>The backend is one server process that runs MRT2 (see Fig. 6). Clients send control messages to
       <code>/stream/input</code>, and the player receives audio from <code>/stream/playback</code>. Any
       number of clients can connect to the input channel. The server keeps the MRT2 state in memory and
       generates one block at a time.</p>
-    <p>The player paces generation with credits. When the player connects, the server generates
+    <p>The player paces generation with credits (Eq. (1)). When the player connects, the server generates
       <var>N</var> blocks. After that, it generates one block for each <code>ReceivedChunk</code> message
       the player sends when a block has played. From control message to first sample at the sound card,
-      the measured delay is 556 ms on average (451–659 ms): 101 ms on average waiting for the next block,
+      the measured delay is 556 ms on average (451–659 ms; Fig. 5): 101 ms on average waiting for the next block,
       400 ms behind the <var>N</var>&nbsp;&minus;&nbsp;1 queued blocks, and 48 ms of output latency.
       Generating a block takes about 96 ms, which leaves 360 ms of slack. This slack absorbs the 300 ms
       stall when a new prompt must be embedded.</p>
     <figure class="wide paper-figure">
-      <img src="assets/figures/fig5-system-backend.webp" width="1430" height="523" loading="lazy"
-        alt="System backend architecture diagram showing Input (Client), Processing (Server with MRT2 and tempo time-stretch), and Output (Player and visualization)">
-      <figcaption>System backend. Style and notes/drums updates reach the server on <code>/stream/input</code>,
+      <img src="assets/figures/fig5-system-backend.webp" width="1600" height="650" loading="lazy"
+        alt="System backend.">
+      <figcaption>Fig. 6. System backend. Style and notes/drums updates reach the server on <code>/stream/input</code>,
         and tempo updates over HTTP. Each MRT2 block is time-stretched and streamed to the player on
         <code>/stream/playback</code>, and one <code>ReceivedChunk</code> is returned per block played.</figcaption>
     </figure>
     <figure class="wide paper-figure">
       <img src="assets/figures/fig6-credit-window.webp" width="1479" height="508" loading="lazy"
-        alt="Timing diagram of one control change through the credit window of N = 3 blocks of 200 ms, totaling up to 600 ms">
-      <figcaption>Timing of one control change (<var>N</var>&nbsp;=&nbsp;3, <var>F</var>&nbsp;=&nbsp;5),
+        alt="Timing of one control change (N = 3, F = 5), measured with mrt2_small.">
+      <figcaption>Fig. 5. Timing of one control change (<var>N</var>&nbsp;=&nbsp;3, <var>F</var>&nbsp;=&nbsp;5),
         measured with mrt2_small.</figcaption>
     </figure>
-    <h3>Tempo and style</h3>
-    <p>To make the generated music follow the conductor’s tempo, we time-stretch the generated waveform.
-      For each audio block, we compute a target playback speed as the conducted tempo divided by the
+    <h3>Modulating the tempo</h3>
+    <p>To make the generated music follow the conductor’s tempo, we time-stretch the generated waveform.</p>
+    <p>For each audio block, we compute a target playback speed as the conducted tempo divided by the
       estimated tempo, and move the current speed gradually toward this target to avoid abrupt tempo
       changes. The block is then time-stretched to this speed using a WSOLA implementation, to maintain
       pitch correctness and minimize perceptual discontinuities in the audio.</p>
-    <p>The browser detects and tracks the plushes with YOLOE and BoT-SORT on WebGPU. The client
-      identifies each plush by comparing a DINOv2 embedding of its crop with up to 12 stored reference
+    <h3>Musical Style Control</h3>
+    <p><strong>Object recognition and tracking.</strong> The browser detects and tracks the plushes with YOLOE and BoT-SORT
+      on WebGPU. The client identifies each plush by comparing a DINOv2 embedding of its crop with up to 12 stored reference
       frames of each known plush, so a plush that is occluded or leaves the view is re-identified when
       it reappears. A plush’s weight increases as it approaches a reference point on the table, and four
       times a second the client sends all weights in one <code>UpdateRecipe</code> message.</p>
@@ -314,6 +315,6 @@
 </script>
 <script defer src="js/table.js?v=5"></script>
 <script defer src="js/conducting-tempo-data.js?v=6"></script>
-<script defer src="js/conducting-tempo.js?v=34"></script>
+<script defer src="js/conducting-tempo.js?v=37"></script>
 </body>
 </html>
