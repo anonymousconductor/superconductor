@@ -1,7 +1,9 @@
 # SuperConductor
 
-Demo site for the SuperConductor paper. Static files only, served by GitHub Pages from
-the repository root (`.nojekyll` disables Jekyll).
+Demo site for the SuperConductor paper: https://anonymousconductor.github.io/superconductor/
+
+Static files only, served by GitHub Pages from the repository root (`.nojekyll` disables
+Jekyll).
 
 Preview locally with `make` (serves http://localhost:8138).
 
